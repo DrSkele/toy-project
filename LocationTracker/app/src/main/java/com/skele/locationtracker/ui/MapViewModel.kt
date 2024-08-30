@@ -1,6 +1,5 @@
 package com.skele.locationtracker.ui
 
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -9,7 +8,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.skele.locationtracker.model.LocationEntity
 import com.skele.locationtracker.model.LocationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -49,9 +47,10 @@ class MapViewModel
             val list = locationRepository.getLocations()
             val header = "id,latitude,longitude\n"
             val data =
-                list.joinToString("\n") { location ->
-                    "${location.id},${location.latitude},${location.longitude}"
-                }
+                list
+                    .mapIndexed { index, location ->
+                        "${index + 1},${location.latitude},${location.longitude}"
+                    }.joinToString("\n")
 
             return header + data
         }
