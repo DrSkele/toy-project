@@ -2,7 +2,7 @@ package com.skele.locationtracker.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.util.Log
+import android.os.Looper
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,13 +27,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -98,9 +103,32 @@ fun MapScreen(
         if (permissionResults.all { permissions -> permissions.value }) {
             hasPermission = true
 
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                viewModel.setLocation(LatLng(location.latitude, location.longitude))
-            }
+//            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+//                viewModel.setLocation(LatLng(location.latitude, location.longitude))
+//            }
+
+            // get finer location update
+            val locationRequest =
+                LocationRequest
+                    .Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
+                    .apply {
+                        setMinUpdateIntervalMillis(5000)
+                    }.build()
+
+            val locationCallback =
+                object : LocationCallback() {
+                    override fun onLocationResult(locationResult: LocationResult) {
+                        for (location in locationResult.locations) {
+                            viewModel.setLocation(LatLng(location.latitude, location.longitude))
+                        }
+                    }
+                }
+
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                Looper.getMainLooper(),
+            )
         } else {
             // On permission denied
         }
@@ -143,10 +171,18 @@ fun MapScreen(
                 Text(modifier = Modifier.align(Alignment.Center), text = "Loading...")
             }
         }
+        if (hasPermission && currentState is MapScreenState.Tracking) {
+            Text(
+                modifier = Modifier.align(Alignment.TopCenter).padding(16.dp),
+                text = currentState.location.toString(),
+                color = Color.DarkGray,
+            )
+        }
         Row(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             FloatingActionButton(
@@ -179,4 +215,8 @@ fun MapScreen(
             )
         }
     }
+}
+
+@Composable
+fun MapScreenContent(modifier: Modifier = Modifier) {
 }
